@@ -56,6 +56,9 @@ terminal instead, but on Windows you will need to use the Git Bash shell.
     $ cd /vagrant/swiss_pairing
    ```
    
+   This allows you to sync changes between the VM and the files on your 
+   local machine.
+   
 4. At this point, you can set up the tournament database and hold a tournament.
 See the next section, *Setup*, for further instructions.
 
