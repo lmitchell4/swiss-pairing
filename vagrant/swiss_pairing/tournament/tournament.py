@@ -2,7 +2,7 @@
 
 """ Module functions:
 
-connect - Return a connection to the PostgreSQL tournament database.
+connect - Get connection and cursor for the tournament database.
 saveTournament - Save data from a completed tournament.
 generateTables - Generate temporary tables for the current tournament.
 deleteTables - Delete the temporary tables used for the current tournament.
@@ -38,16 +38,19 @@ from itertools import chain
 import psycopg2
 
 
-def connect():
-    """Return a connection to the PostgreSQL tournament database."""
-    return psycopg2.connect("dbname=tournament")
+def connect(database_name="tournament"):
+    """Get connection and cursor for the tournament database."""
+    try:
+        db = psycopg2.connect("dbname={}".format(database_name))
+        cursor = db.cursor()
+        return db, cursor
+    except:
+        print "Error connecting to database", database_name
 
 
 def saveTournament():
     """Save data from a completed tournament."""
-
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     # Get a new identifier for this tournament:
     cursor.execute("SELECT nextval('serial');")
@@ -92,16 +95,14 @@ def saveTournament():
         match_tup = tuple([tournament_num]) + record
         cursor.execute(insert_match_string, match_tup)
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def generateTables():
     """Generate temporary tables for the current tournament."""
-
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("""
         CREATE TABLE player (
@@ -134,30 +135,27 @@ def generateTables():
         """
     )
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def deleteTables():
     """Delete the temporary tables used for the current tournament."""
-
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("DROP TABLE match;")
     cursor.execute("DROP TABLE standing;")
     cursor.execute("DROP TABLE player;")
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def deleteMatches():
     """Remove all the match data from the current tournament."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("DELETE FROM match;")
     cursor.execute("UPDATE standing SET wins = 0;")
@@ -167,22 +165,21 @@ def deleteMatches():
     cursor.execute("UPDATE standing SET score = 0;")
     cursor.execute("UPDATE standing SET matches = 0;")
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def deletePlayers():
     """Remove all player data from the current tournament."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     # Delete standing first because it references the player table.
     cursor.execute("DELETE FROM standing;")
     cursor.execute("DELETE FROM player;")
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
@@ -192,8 +189,7 @@ def registerPlayer(name):
        Args:
         name: the player's full name (need not be unique).
     """
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
     cursor.execute("INSERT INTO player (name) VALUES (%s) RETURNING id;",
                    (name,))
     new_player_id = int(cursor.fetchone()[0])
@@ -205,27 +201,25 @@ def registerPlayer(name):
     """
     cursor.execute(insert_string, (new_player_id,0,0,0,0,0,0))
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def countPlayers():
     """Get the number of players in the current tournament."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("SELECT COUNT(id) FROM player;")
     player_count = cursor.fetchone()[0]
 
-    conn.close()
+    db.close()
     return player_count
 
 
 def getWinners():
     """Get the players with the highest score."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("""
         SELECT s.player_id, p.name, s.score FROM player p, standing s  
@@ -235,14 +229,13 @@ def getWinners():
     )
     winners = cursor.fetchall()
 
-    conn.close()
+    db.close()
     return winners
 
 
 def playerStandings():
     """Get current player standings, sorted by score."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
     
     cursor.execute("""
         SELECT player_id, name, wins, matches
@@ -253,14 +246,13 @@ def playerStandings():
     standings = cursor.fetchall()
     standings = [tuple(record) for record in standings]
 
-    conn.close()
+    db.close()
     return standings
 
 
 def playerScores():
     """Get current player scores, sorted by score."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("""
         SELECT player_id, name, score
@@ -271,21 +263,20 @@ def playerScores():
     standings = cursor.fetchall()
     standings = [tuple(record) for record in standings]
 
-    conn.close()
+    db.close()
     return standings
 
 
 def getPlayerIds():
     """Get current player ids."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("SELECT id FROM player;")
     records = cursor.fetchall()
     ids = [record[0] for record in records]
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return ids
 
 
@@ -298,15 +289,14 @@ def playerScoresDict():
 
 def allExistingPairs():
     """Get all matches that have been used in the current tournament."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     cursor.execute("SELECT winner_id, loser_id FROM match;")
     records = cursor.fetchall()
     pairings = [tuple([record[0],record[1]]) for record in records]
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return pairings
 
 
@@ -320,8 +310,7 @@ def reportMatch(winner, loser, round_num, tie=False):
         tie: Boolean indicating if the match ended in a tie. If True, the
              order of the winner and loser arguments does not matter.
     """
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     # Update match table:
     insert_string = """
@@ -355,15 +344,14 @@ def reportMatch(winner, loser, round_num, tie=False):
         cursor.execute(win_string, (winner, ))
         cursor.execute(loss_string, (loser, ))
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
 def reportByeMatch(player, round_num):
     """Record the outcome of a bye match."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
 
     # Update match table:
     insert_string = """
@@ -381,8 +369,8 @@ def reportByeMatch(player, round_num):
     """
     cursor.execute(tie_string, (player, ))
 
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return None
 
 
@@ -398,7 +386,6 @@ def swissPairings(round_num, verbose=False):
        2) for duplicates by score, randomly order them amongst themselves.
        3) check for rematches and multiple byes.
     """
-
     if round_num == 1:
         player_ids = getPlayerIds()
         if len(player_ids) % 2 == 1:
@@ -664,8 +651,7 @@ def simulateTournament(use_players):
 
 def viewPermanentTables():
     """View permanent tournament tables."""
-    conn = connect()
-    cursor = conn.cursor()
+    db, cursor = connect()
     
     cursor.execute("""
             SELECT * FROM allplayers;
@@ -686,4 +672,4 @@ def viewPermanentTables():
     for standing in standings:
         print standing
 
-    conn.close()
+    db.close()
