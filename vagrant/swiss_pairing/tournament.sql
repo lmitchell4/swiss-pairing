@@ -5,8 +5,7 @@
 --
 
 
--- For debugging and testing.
--- DROP DATABASE tournament;
+DROP DATABASE IF EXISTS tournament;
 
 CREATE DATABASE tournament;
 \c tournament
