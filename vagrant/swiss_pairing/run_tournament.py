@@ -21,13 +21,8 @@ simulateTournament(test_1_players)
 
 ######## Tournament 2 ########
 ## This is one example of a tournament with an odd number of players.
-# test_2_players = ["Player 1",
-                  # "Player 2",
-                  # "Player 3",
-                  # "Player 4"]
-# simulateTournament(test_2_players)
-
-
-
-# View players in the permanent table allplayers and standings in allstandings:
-viewPermanentTables()
+test_2_players = ["Player 1",
+                  "Player 2",
+                  "Player 3",
+                  "Player 4"]
+simulateTournament(test_2_players)

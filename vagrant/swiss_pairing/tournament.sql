@@ -11,40 +11,25 @@ CREATE DATABASE tournament;
 \c tournament
 
 -- For generating tournament numbers.
-CREATE SEQUENCE serial START 0 MINVALUE 0;
+CREATE SEQUENCE serial START 1 MINVALUE 1;
 
-CREATE TABLE allstandings (
-    -- tournament_id SERIAL PRIMARY KEY,
+CREATE TABLE players (
     tournament_id INTEGER,
-    player_id INTEGER,
-    wins INTEGER,
-    losses INTEGER,
-    ties INTEGER,
-    byes INTEGER,
-    score INTEGER,
-    matches INTEGER,
-    PRIMARY KEY (tournament_id,player_id)
-);
-
-CREATE TABLE allplayers (
-    -- id SERIAL PRIMARY KEY,
-    tournament_id INTEGER,
-    player_id INTEGER,
+    player_id SERIAL,
     name TEXT,
     PRIMARY KEY (tournament_id,player_id)
 );
 
-CREATE TABLE allmatches (
+CREATE TABLE matches (
     tournament_id INTEGER,
-    match_id INTEGER,
+    match_id SERIAL,
     winner_id INTEGER,
     loser_id INTEGER,
     tie BOOLEAN,
     round_num INTEGER,
-    PRIMARY KEY (tournament_id,match_id)
+    PRIMARY KEY (tournament_id,match_id),
+    FOREIGN KEY (tournament_id,winner_id) REFERENCES
+        players (tournament_id,player_id),
+    FOREIGN KEY (tournament_id,loser_id) REFERENCES
+        players (tournament_id,player_id)
 );
-
--- CREATE VIEW course_size AS
--- SELECT course_id, count(*) AS num FROM enrollment
--- GROUP BY course_id;
-
