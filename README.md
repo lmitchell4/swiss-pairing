@@ -85,7 +85,10 @@ create a database for storing tournament information:
     ```
     This will start PostgreSQL, create a database called **tournament**, 
     then exit PostgreSQL. You can store multiple tournaments in the same 
-    database, so this only needs to be done once.
+    database, so this only needs to be done once. 
+    
+    **Warning:** Each time you run this code, any existing `tournament` database 
+    will be overwritten.
 
 2. Use functions in the module `tournament.py` to organize a new tournament and 
 store the results in the **tournament** database. The script `run_tournament.py` 
@@ -111,8 +114,7 @@ are given 1 point. Each player can have at most one bye round per tournament.
 levels, but the program also makes sure that no two players get paired up 
 more than once in a given tournament.
 * The results from multiple tournaments can be stored in the same database.
-* Data from a tournament is only saved if the tournament is succesfully 
-completed. This prevents orphaned data from ending up in the database.
+
 
 
 ### To do
