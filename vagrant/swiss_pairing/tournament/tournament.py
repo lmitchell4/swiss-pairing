@@ -11,7 +11,7 @@ registerPlayer - Add a player to the current tournament.
 countPlayers - Get the number of players in the current tournament.
 getWinners - Get the players with the highest score.
 playerStandings - Get current player standings, sorted by score.
-playerScores - Get current player scores, sorted by score.
+playerScores - Get current player scores, sorted by highest to lowest score.
 getPlayerIds - Get current player ids.
 playerScoresDict - Get playerScores() in dictionary form.
 allExistingPairs - Get all matches that have been used in the current
@@ -138,12 +138,13 @@ def getWinners(tournament_num):
     db, cursor = connect()
 
     # Note: the views don't get committed, so they normally won't exist,
-    # but they might if you're debugging.
+    # but they might if you're debugging.    
     select_str = """
         DROP VIEW IF EXISTS scores_v;
         DROP VIEW IF EXISTS players_v;
         DROP VIEW IF EXISTS wins_v;
         DROP VIEW IF EXISTS ties_v;
+        DROP VIEW IF EXISTS byes_v;
 
         -- PLAYERS
         CREATE VIEW players_v AS
@@ -153,7 +154,8 @@ def getWinners(tournament_num):
         CREATE VIEW wins_v AS
             SELECT winner_id AS player_id, COUNT(*) AS wins
                 FROM matches
-                WHERE tournament_id = (%s) AND tie = FALSE GROUP BY winner_id;
+                WHERE tournament_id = (%s) AND tie = FALSE 
+                GROUP BY winner_id;
 
         -- TIES
         CREATE VIEW ties_v AS
@@ -165,21 +167,30 @@ def getWinners(tournament_num):
                 WHERE tournament_id = (%s) AND tie = TRUE) AS b
             USING (player_id)) as c GROUP BY player_id;
 
+        -- BYES
+        CREATE VIEW byes_v AS
+            SELECT player_id, COUNT(*) AS byes FROM
+            (SELECT winner_id AS player_id FROM matches
+                WHERE tournament_id = (%s) AND tie IS NULL) AS a
+            GROUP BY player_id;
+            
         -- SCORES
         CREATE VIEW scores_v AS
-            SELECT player_id, name, wins*2 + ties*1 AS score FROM  (
-                SELECT player_id, name, COALESCE(wins,0) AS wins,
-                    COALESCE(ties,0) AS ties FROM wins_v w
+            SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM 
+                (SELECT player_id, name, COALESCE(wins,0) AS wins,
+                    COALESCE(ties,0) AS ties,
+                    COALESCE(byes,0) AS byes FROM wins_v w
                     FULL OUTER JOIN ties_v t USING (player_id)
-                    RIGHT OUTER JOIN players_v p USING (player_id)
-            ) AS a
+                    FULL OUTER JOIN byes_v b USING (player_id)
+                    RIGHT OUTER JOIN players_v p USING (player_id)) AS a
             ORDER BY score DESC;
 
         SELECT * FROM scores_v
             WHERE score = (SELECT MAX(score) FROM scores_v);
     """
     cursor.execute(select_str, (tournament_num, tournament_num,
-                                tournament_num, tournament_num))
+                                tournament_num, tournament_num,
+                                tournament_num))
     winners = cursor.fetchall()
 
     db.close()
@@ -232,13 +243,14 @@ def playerStandings(tournament_num):
 
 
 def playerScores(tournament_num):
-    """Get current player scores, sorted by score."""
+    """Get current player scores, sorted by highest to lowest score."""
     db, cursor = connect()
 
     select_str = """
         DROP VIEW IF EXISTS players_v;
         DROP VIEW IF EXISTS wins_v;
         DROP VIEW IF EXISTS ties_v;
+        DROP VIEW IF EXISTS byes_v;
 
         -- PLAYERS
         CREATE VIEW players_v AS
@@ -252,25 +264,38 @@ def playerScores(tournament_num):
 
         -- TIES
         CREATE VIEW ties_v AS
-            SELECT player_id, COUNT(*) AS ties FROM
-            ((SELECT winner_id AS player_id FROM matches
-                WHERE tournament_id = (%s) AND tie = TRUE) AS a
-                FULL OUTER JOIN
-             (SELECT loser_id AS player_id FROM matches
-                WHERE tournament_id = (%s) AND tie = TRUE) AS b
-            USING (player_id)) as c GROUP BY player_id;
+            SELECT player_id, COALESCE(ties_w,0) + COALESCE(ties_l,0) 
+                as ties FROM 
+            -- ties where the player is recorded in the winner column
+            (SELECT winner_id AS player_id, COUNT(*) as ties_w FROM matches 
+                WHERE tournament_id = (%s) 
+                AND tie = TRUE GROUP BY winner_id) as a FULL OUTER JOIN 
+            -- ties where the player is recorded in the loser column
+            (SELECT loser_id AS player_id, COUNT(*) as ties_l FROM matches 
+                WHERE tournament_id = (%s) 
+            AND tie = TRUE GROUP BY loser_id) as b 
+            USING (player_id);
 
+        -- BYES
+        CREATE VIEW byes_v AS
+            SELECT player_id, COUNT(*) AS byes FROM
+            (SELECT winner_id AS player_id FROM matches
+                WHERE tournament_id = (%s) AND tie IS NULL) AS a
+            GROUP BY player_id;
 
-        SELECT player_id, name, wins*2 + ties*1 AS score FROM  (
-            SELECT player_id, name, COALESCE(wins,0) AS wins,
-                COALESCE(ties,0) AS ties FROM wins_v w
+        -- SCORES
+        SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM 
+            (SELECT player_id, name, COALESCE(wins,0) AS wins,
+                COALESCE(ties,0) AS ties,
+                COALESCE(byes,0) AS byes FROM wins_v w
                 FULL OUTER JOIN ties_v t USING (player_id)
-                RIGHT OUTER JOIN players_v p USING (player_id)
-        ) AS a
-        ORDER BY score DESC;
+                FULL OUTER JOIN byes_v b USING (player_id)
+                RIGHT OUTER JOIN players_v p USING (player_id)) AS a
+        ORDER BY score DESC;  
     """
     cursor.execute(select_str, (tournament_num, tournament_num,
-                                tournament_num, tournament_num))
+                                tournament_num, tournament_num,
+                                tournament_num))
     standings = cursor.fetchall()
     standings = [tuple(record) for record in standings]
 
