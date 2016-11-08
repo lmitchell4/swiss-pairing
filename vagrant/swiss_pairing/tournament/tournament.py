@@ -138,7 +138,7 @@ def getWinners(tournament_num):
     db, cursor = connect()
 
     # Note: the views don't get committed, so they normally won't exist,
-    # but they might if you're debugging.    
+    # but they might if you're debugging.
     select_str = """
         DROP VIEW IF EXISTS scores_v;
         DROP VIEW IF EXISTS players_v;
@@ -154,7 +154,7 @@ def getWinners(tournament_num):
         CREATE VIEW wins_v AS
             SELECT winner_id AS player_id, COUNT(*) AS wins
                 FROM matches
-                WHERE tournament_id = (%s) AND tie = FALSE 
+                WHERE tournament_id = (%s) AND tie = FALSE
                 GROUP BY winner_id;
 
         -- TIES
@@ -173,10 +173,10 @@ def getWinners(tournament_num):
             (SELECT winner_id AS player_id FROM matches
                 WHERE tournament_id = (%s) AND tie IS NULL) AS a
             GROUP BY player_id;
-            
+
         -- SCORES
         CREATE VIEW scores_v AS
-            SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM 
+            SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM
                 (SELECT player_id, name, COALESCE(wins,0) AS wins,
                     COALESCE(ties,0) AS ties,
                     COALESCE(byes,0) AS byes FROM wins_v w
@@ -264,16 +264,16 @@ def playerScores(tournament_num):
 
         -- TIES
         CREATE VIEW ties_v AS
-            SELECT player_id, COALESCE(ties_w,0) + COALESCE(ties_l,0) 
-                as ties FROM 
+            SELECT player_id, COALESCE(ties_w,0) + COALESCE(ties_l,0)
+                as ties FROM
             -- ties where the player is recorded in the winner column
-            (SELECT winner_id AS player_id, COUNT(*) as ties_w FROM matches 
-                WHERE tournament_id = (%s) 
-                AND tie = TRUE GROUP BY winner_id) as a FULL OUTER JOIN 
+            (SELECT winner_id AS player_id, COUNT(*) as ties_w FROM matches
+                WHERE tournament_id = (%s)
+                AND tie = TRUE GROUP BY winner_id) as a FULL OUTER JOIN
             -- ties where the player is recorded in the loser column
-            (SELECT loser_id AS player_id, COUNT(*) as ties_l FROM matches 
-                WHERE tournament_id = (%s) 
-            AND tie = TRUE GROUP BY loser_id) as b 
+            (SELECT loser_id AS player_id, COUNT(*) as ties_l FROM matches
+                WHERE tournament_id = (%s)
+            AND tie = TRUE GROUP BY loser_id) as b
             USING (player_id);
 
         -- BYES
@@ -284,14 +284,14 @@ def playerScores(tournament_num):
             GROUP BY player_id;
 
         -- SCORES
-        SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM 
+        SELECT player_id, name, wins*2 + ties*1 + byes*1 AS score FROM
             (SELECT player_id, name, COALESCE(wins,0) AS wins,
                 COALESCE(ties,0) AS ties,
                 COALESCE(byes,0) AS byes FROM wins_v w
                 FULL OUTER JOIN ties_v t USING (player_id)
                 FULL OUTER JOIN byes_v b USING (player_id)
                 RIGHT OUTER JOIN players_v p USING (player_id)) AS a
-        ORDER BY score DESC;  
+        ORDER BY score DESC;
     """
     cursor.execute(select_str, (tournament_num, tournament_num,
                                 tournament_num, tournament_num,

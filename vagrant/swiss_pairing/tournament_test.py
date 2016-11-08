@@ -3,10 +3,11 @@
 # Test cases for tournament.py
 # These tests are not exhaustive, but they should cover the majority of cases.
 #
-# If you do add any of the extra credit options, be sure to add/modify these 
+# If you do add any of the extra credit options, be sure to add/modify these
 # test cases as appropriate to account for your module's added functionality.
 
 from tournament.tournament import *
+
 
 def testCount(tournament_num):
     """
@@ -44,6 +45,7 @@ def testCount(tournament_num):
     print ("4. countPlayers() returns zero after registered players are "
            "deleted.\n5. Player records successfully deleted.")
 
+
 def testStandingsBeforeMatches(tournament_num):
     """
     Test to ensure players are properly represented in standings prior
@@ -74,6 +76,7 @@ def testStandingsBeforeMatches(tournament_num):
     print ("6. Newly registered players appear in the standings with "
            "no matches.")
 
+
 def testReportMatches(tournament_num):
     """
     Test that matches are reported properly.
@@ -81,10 +84,10 @@ def testReportMatches(tournament_num):
     """
     deleteMatches(tournament_num)
     deletePlayers(tournament_num)
-    registerPlayer(tournament_num,"Bruno Walton")
-    registerPlayer(tournament_num,"Boots O'Neal")
-    registerPlayer(tournament_num,"Cathy Burton")
-    registerPlayer(tournament_num,"Diane Grant")
+    registerPlayer(tournament_num, "Bruno Walton")
+    registerPlayer(tournament_num, "Boots O'Neal")
+    registerPlayer(tournament_num, "Cathy Burton")
+    registerPlayer(tournament_num, "Diane Grant")
     standings = playerStandings(tournament_num)
     [id1, id2, id3, id4] = [row[0] for row in standings]
 
@@ -116,18 +119,19 @@ def testReportMatches(tournament_num):
     print ("8. After match deletion, player standings are properly reset."
            "\n9. Matches are properly deleted.")
 
+
 def testPairings(tournament_num):
     """
-    Test that pairings are generated properly both before and after match 
+    Test that pairings are generated properly both before and after match
     reporting.
     """
     deleteMatches(tournament_num)
     deletePlayers(tournament_num)
-    use_players = ["Twilight Sparkle","Fluttershy","Applejack",
-                   "Pinkie Pie","Rarity","Rainbow Dash","Princess Celestia",
-                   "Princess Luna"]
+    use_players = ["Twilight Sparkle", "Fluttershy", "Applejack",
+                   "Pinkie Pie", "Rarity", "Rainbow Dash",
+                   "Princess Celestia", "Princess Luna"]
     for player in use_players:
-        registerPlayer(tournament_num,player)
+        registerPlayer(tournament_num, player)
 
     standings = playerStandings(tournament_num)
     [id1, id2, id3, id4, id5, id6, id7, id8] = [row[0] for row in standings]
@@ -155,14 +159,13 @@ def testPairings(tournament_num):
                           frozenset([id2, id8]), frozenset([id4, id6]),
                           frozenset([id4, id8]), frozenset([id6, id8])
                           ])
-    actual_pairs = set([frozenset([pid1, pid2]), frozenset([pid3, pid4]), 
+    actual_pairs = set([frozenset([pid1, pid2]), frozenset([pid3, pid4]),
                        frozenset([pid5, pid6]), frozenset([pid7, pid8])])
     for pair in actual_pairs:
         if pair not in possible_pairs:
             raise ValueError("After one match, players with one win should "
                              "be paired.")
     print "10. After one match, players with one win are properly paired."
-
 
 
 if __name__ == '__main__':
